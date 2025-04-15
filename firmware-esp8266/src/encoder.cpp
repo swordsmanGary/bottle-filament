@@ -7,6 +7,11 @@ private:
     bool s1_old, s2_old, key_old;
 
     uint8_t state;
+    uint8_t is_hold_moving;
+    uint32_t hold_timer;
+    uint32_t hold_delay;
+    bool no_hold;
+    
 
     void (*leftFunc)();
     void (*rightFunc)();
@@ -15,10 +20,34 @@ private:
     void (*pressFunc)();
     void (*holdFunc)();
 
+    void leftAct(){
+        if(!digitalRead(key_pin)){
+            is_hold_moving = true;
+        }
+        if(is_hold_moving){
+            leftHoldFunc();
+        }
+        else {
+            leftFunc();
+        }
+    }
+    void rightAct(){
+        if(!digitalRead(key_pin)){
+            is_hold_moving = true;
+        }
+        if(is_hold_moving){
+            rightHoldFunc();
+        }
+        else {
+            rightFunc();
+        }
+    }
+
 public:
     Encoder(uint8_t s1_pin,
             uint8_t s2_pin,
             uint8_t key_pin,
+            uint32_t hold_delay,
             void (*leftFunc)(),
             void (*rightFunc)(),
             void (*leftHoldFunc)(),
@@ -29,6 +58,7 @@ public:
         this->s1_pin = s1_pin;
         this->s2_pin = s2_pin;
         this->key_pin = key_pin;
+        this->hold_delay = hold_delay;
         this->leftFunc = leftFunc;
         this->rightFunc = rightFunc;
         this->leftHoldFunc = leftHoldFunc;
@@ -44,18 +74,33 @@ public:
     }
     void update()
     {
-        bool s1 = !digitalRead(s1_pin);
-        bool s2 = !digitalRead(s2_pin);
-        bool key = !digitalRead(key_pin);
+        const bool s1 = !digitalRead(s1_pin);
+        const bool s2 = !digitalRead(s2_pin);
+        const bool key = !digitalRead(key_pin);
+
+        if(key != key_old){
+            key_old = key;
+            if(key){
+                hold_timer = millis();
+            }
+            if(!key){
+                if(!no_hold && !is_hold_moving){
+                    pressFunc();
+                }
+                is_hold_moving = false;
+                no_hold = false;
+            }
+        }
+        if(key && !is_hold_moving && !no_hold){
+            if(millis() - hold_timer >= hold_delay){
+                no_hold = true;
+                holdFunc();
+            }
+        }
 
         if (s1 != s1_old ||
-            s2 != s2_old ||
-            key != key_old)
+            s2 != s2_old)
         {
-            s1_old = s1;
-            s2_old = s2;
-            key_old = key;
-
             switch (state)
             {
                 // Starting point
@@ -79,7 +124,7 @@ public:
                     break;
                 case 2:
                     if(!s1 && !s2){
-                        leftFunc();
+                        leftAct();
                         state = 0;
                     }
                     else if(!s2){
@@ -91,7 +136,7 @@ public:
                 break;
                 case 3:
                     if(!s2){
-                        leftFunc();
+                        leftAct();
                         state = 0;
                     }
                     else if(s1){
@@ -110,7 +155,7 @@ public:
                     break;
                 case 5:
                     if(!s1 && !s2){
-                        rightFunc();
+                        rightAct();
                         state = 0;
                     }
                     else if(!s1){
@@ -122,14 +167,16 @@ public:
                 break;
                 case 6:
                     if(!s1){
-                        rightFunc();
+                        rightAct();
                         state = 0;
                     }
                     else if(s2){
                         state = 5;
                     }
                 break;
-            
+
+            s1_old = s1;
+            s2_old = s2;  
             }
         }
     }
