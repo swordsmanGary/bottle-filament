@@ -3,11 +3,17 @@
 #define ENC_KEY D7
 
 #include <Arduino.h>
+
+#include "encoder.cpp"
+#include "filament-checker.cpp"
+#include "heater.cpp"
+#include "stepper.cpp"
+#include "thermistor.cpp"
+
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
 LiquidCrystal_I2C lcd(0x27, 16, 4);
-
 
 void setup() {
   lcd.init();
