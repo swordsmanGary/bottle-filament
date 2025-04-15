@@ -13,10 +13,17 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
+void nothing();
+void left();
+void right();
+
 LiquidCrystal_I2C lcd(0x27, 16, 4);
+Encoder enc(ENC_S2, ENC_S1, ENC_KEY, left, right, nothing, nothing, nothing, nothing);
 
 void setup() {
+  enc.init();
   lcd.init();
+
   lcd.backlight();
   lcd.setCursor(3,0);
   lcd.print("Hello World!");
@@ -25,4 +32,15 @@ void setup() {
 }
 
 void loop() {
+  enc.update();
+}
+
+void left(){
+  Serial.println("left");
+}
+void right(){
+  Serial.println("right");
+}
+void nothing(){
+
 }
