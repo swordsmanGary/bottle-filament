@@ -1,0 +1,60 @@
+#include <Arduino.h>
+
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>Панель керування</h1><br>
+    <form action="#" method="POST" id="settings">
+        <label for="onoff">Увімк/вимк</label>
+        <input type="checkbox" id="onoff" name="onoff"><br>
+        <label for="speed">Швидкість крокового двигуна крок/сек</label><br>
+        <input type="number" id="speed" name="speed" min="100" max="1000" step="1" placeholder="100"><br>
+        <label for="dir">Напрямок крокового двигуна</label><br>
+        <input type="number" id="dir" name="dir" min="0" max="1" step="1" placeholder="200"><br>
+        <label for="temp">Температура хотенду</label><br>
+        <input type="number" id="temp" name="temp" min="100" max="300" step="1" placeholder="0"><br>
+        <input type="submit" value="Оновити"><br>
+    </form> 
+    <button id="write">Зберегти</button>
+    <div id="log"></div>
+    <script>
+        document.getElementById('settings').addEventListener('submit', async function (e){
+            e.preventDefault();
+
+            const formData = new FormData(this);
+
+            try{
+                const response = await fetch('/update', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const result = await response.text();
+                document.getElementById('log').innerText = result;
+            } catch (error){
+                console.error('Помилка відправки форми: ', error);
+            }
+        });
+        document.getElementById('write').addEventListener('click', async function (e){
+
+            try{
+                const response = await fetch('/write', {
+                    method: 'POST'
+                });
+
+                const result = await response.text();
+                document.getElementById('log').innerText = result;
+            } catch (error){
+                console.error('Помилка відправки форми: ', error);
+            }
+        });
+    </script>
+</body>
+</html>
+    )rawliteral";
