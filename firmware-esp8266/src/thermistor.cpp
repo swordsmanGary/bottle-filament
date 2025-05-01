@@ -28,4 +28,7 @@ class Thermistor{
     void init(){
         pinMode(pin, INPUT);
     }
+    float get(){
+        return -1000;
+    }
 };

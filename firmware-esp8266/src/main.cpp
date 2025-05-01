@@ -3,9 +3,10 @@
 #define TEMP_BETA 3950
 #define TEMP_REFERECNE_RESISTANCE 1095
 #define TEMP_SAMPLING_BUFFER_SIZE 100
-
 #define TEMP_PIN A0
+
 #define HEAT_PIN D3
+#define HEAT_UPDATE_DELAY_MS 500
 
 #define STEPPER_STEP D1
 #define STEPPER_EN D7
@@ -87,7 +88,7 @@ void setup() {
   while(WiFi.status() != WL_CONNECTED){
     delay(1);
   }*/
- WiFi.softAP(ssid, password);
+  WiFi.softAP(ssid, password);
   Serial.print("Підключено! IP адреса: ");
   Serial.println(WiFi.localIP());
 
@@ -104,7 +105,6 @@ uint32_t heater_timer;
 void loop() {
   server.handleClient();
   check.update();
-  handleSerialInput();
   if(state.is_updated){
     state.is_updated = false;
     step.setFreq(state.stepper_freq);
@@ -116,6 +116,13 @@ void loop() {
       heat.heatOff();
     }
   }
+  if(state.is_working){
+    if(millis() - heater_timer >= HEAT_UPDATE_DELAY_MS){
+      heater_timer = millis();
+      heat.update(temp.get());
+    }
+  }
+  handleSerialInput();
 }
 void handleRoot(){
   server.send(200, "text/html", index_html);
@@ -144,7 +151,7 @@ void handleUpdate(){
 }
 void handleWrite(){
   state.saveEEPROM();
-
+ 
   Serial.println("Дані збережено");
   server.send(200, "text/plain", "Дані успішно збережено");
 }
