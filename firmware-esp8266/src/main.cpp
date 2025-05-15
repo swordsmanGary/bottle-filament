@@ -104,7 +104,6 @@ uint32_t heater_timer;
 
 void loop() {
   server.handleClient();
-  check.update();
   if(state.is_updated){
     state.is_updated = false;
     step.setFreq(state.stepper_freq);
@@ -121,6 +120,7 @@ void loop() {
       heater_timer = millis();
       heat.update(temp.get());
     }
+    check.update();
   }
   handleSerialInput();
 }
