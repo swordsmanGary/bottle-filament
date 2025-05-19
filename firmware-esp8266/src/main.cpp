@@ -14,6 +14,8 @@
 
 #define FILAMENT_DETECTOR_PIN D6
 
+#define ERROR_OVERHEAT 1
+
 #include <Arduino.h>
 
 #include <EEPROM.h>
@@ -42,7 +44,7 @@ void handleWrite();
 
 ESP8266WebServer server(80);
 
-MachinaSettings state;
+MachinaSettings state = MachinaSettings();
 
 Checker check = Checker(
   FILAMENT_DETECTOR_PIN,
@@ -104,7 +106,8 @@ uint32_t heater_timer;
 
 void loop() {
   server.handleClient();
-  if(state.is_updated){
+  handleSerialInput();
+  /*if(state.is_updated){
     state.is_updated = false;
     step.setFreq(state.stepper_freq);
     step.setDir(state.stepper_dir);
@@ -121,8 +124,7 @@ void loop() {
       heat.update(temp.get());
     }
     check.update();
-  }
-  handleSerialInput();
+  }*/
 }
 void handleRoot(){
   server.send(200, "text/html", index_html);
@@ -130,21 +132,18 @@ void handleRoot(){
 
 void handleUpdate(){
   if(server.hasArg("onoff")){
-    state.is_working = server.arg("onoff").toInt();
+    (bool)server.arg("onoff").toInt() ? state.turnOn() : state.turnOff();
   }
   if(server.hasArg("speed")){
-    state.stepper_freq = server.arg("speed").toInt();
+    state.updateStepperFreq(server.arg("speed").toInt());
   }
   if(server.hasArg("dir")){
-    state.stepper_dir = server.arg("dir").toInt();
+    state.updateStepperDir((bool)server.arg("dir").toInt());
   }
   if(server.hasArg("temp")){
-    state.target_temp = server.arg("temp").toInt();
+    state.updateTargetTemp(server.arg("temp").toFloat());
   }
   Serial.println("Дані оновлено");
-
-  state.is_default = false;
-  state.is_updated = true;
 
   server.send(200, "text/plain", "Дані успішно оновлено");
 
@@ -171,35 +170,29 @@ void handleSerialInput(){
         Serial.println("Turned off");
         break;
       case 'f':
-        state.stepper_freq = rawValue.toInt();
-        state.is_updated = true;
-        state.is_default = false;
+        state.updateStepperFreq(rawValue.toInt());
         Serial.print("Now stepper frequency is ");
-        Serial.println(state.stepper_freq);
+        Serial.println(state.getStepperFreq());
         break;
       case 'd':
-        state.stepper_dir = rawValue.toInt();
-        state.is_updated = true;
-        state.is_default = false;
+        state.updateStepperDir(rawValue.toInt());
         Serial.print("Now stepper direction is ");
-        Serial.println(state.stepper_dir);
+        Serial.println(state.getStepperDir());
         break;
       case 't':
-        state.target_temp = rawValue.toFloat();
-        state.is_updated = true;
-        state.is_default = false;
+        state.updateTargetTemp(rawValue.toFloat());
         Serial.print("Now target temperature is ");
-        Serial.println(state.target_temp);
+        Serial.println(state.getTargetTemp());
         break;
       case 'p':
         Serial.print("Stepper frequency: ");
-        Serial.println(state.stepper_freq);
+        Serial.println(state.getStepperFreq());
         Serial.print("Stepper direction: ");
-        Serial.println(state.stepper_dir);
+        Serial.println(state.getStepperDir());
         Serial.print("Target temperature: ");
-        Serial.println(state.target_temp);
+        Serial.println(state.getTargetTemp());
         Serial.print("Is settings default: ");
-        Serial.println(state.is_default);
+        Serial.println(state.getIsDefault());
         break;
       case 'w':
         state.saveEEPROM();
@@ -214,14 +207,14 @@ void handleSerialInput(){
   }
 }
 void startMachina(){
-  state.is_working = true;
-  step.setFreq(state.stepper_freq);
+  state.turnOn();
+  step.setFreq(state.getStepperFreq());
   step.enable();
   heat.heatOn();
   Serial.println("startMachina");
 }
 void stopMachina(){
-  state.is_working = false;
+  state.turnOff();
   step.disable();
   heat.heatOff();
   Serial.println("stopMachina");
@@ -231,7 +224,7 @@ void endFilamentAction(){
   Serial.println("endFilamentAction");
 }
 void overheatAction(){
-  state.is_error=true;
+  state.throwError(ERROR_OVERHEAT);
   stopMachina();
   Serial.println("overheatAction");
 }
